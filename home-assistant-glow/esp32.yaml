@@ -28,6 +28,10 @@ esphome:
 dashboard_import:
   package_import_url: github://klaasnicolaas/home-assistant-glow/home-assistant-glow/esp32.yaml@main
 
+api:
+  encryption:
+    key: 6DntifcbHhLuSD57SWYxHXoux4TtNDCbyVqu9y2faxI=
+    
 esp32:
   board: esp32dev
   framework:
