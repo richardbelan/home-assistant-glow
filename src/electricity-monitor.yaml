@@ -1,0 +1,97 @@
+esphome:
+  name: electricity-monitor
+  friendly_name: Electricity Monitor
+
+rp2040:
+  board: rpipicow
+  framework:
+    # Required until https://github.com/platformio/platform-raspberrypi/pull/36 is merged
+    platform_version: https://github.com/maxgerhardt/platform-raspberrypi.git
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "XyXfC2VS9XkHAju5bi0jP23PVKOXcIRmt/56vrdZxi8="
+  services:
+    - service: reset_total_energy
+      then:
+        - button.press:
+            id: button_reset_total
+
+ota:
+  password: "a941619a7602e03e92a8d9637e7b5537"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot in case wifi connection fails
+  ap:
+    ssid: "Electricity-Monitor"
+    password: "hxmCQJObwyt7"
+
+number:
+  - platform: template
+    id: select_reset_total
+    name: 'Reset Value - Total Energy kWh'
+    entity_category: config
+    optimistic: true
+    mode: box
+    min_value: 0
+    max_value: 1000000
+    step: 1
+    initial_value: 0
+
+button:
+  # Reset the total energy entity
+  - platform: template
+    name: "Reset - Total Energy"
+    id: button_reset_total
+    on_press:
+      - pulse_meter.set_total_pulses:
+          id: sensor_pulse_meter
+          value: !lambda 'return id(select_reset_total).state * 1000;'
+
+sensor:
+  - platform: pulse_meter
+    name: 'Power'
+    id: sensor_pulse_meter # Optional ID, necessary if you want to calculate the total daily energy
+    unit_of_measurement: 'W'
+    device_class: power
+    state_class: measurement
+    icon: mdi:flash-outline
+    accuracy_decimals: 0
+    pin: 2
+    internal_filter: 120ms
+    filters:
+      - multiply: 60 # (60s / impulse constant) * (1000W / 1kW)    
+      - throttle_average: 60s
+      - filter_out: NaN
+    total:
+      name: "Electricity Total"
+      id: sensor_total_energy
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      icon: mdi:circle-slice-3
+      accuracy_decimals: 3
+      filters:
+        - multiply: 0.001 
+  - platform: total_daily_energy
+    name: 'Total Daily Energy'
+    id: sensor_total_daily_energy
+    power_id: sensor_pulse_meter
+    unit_of_measurement: 'kWh'
+    state_class: total_increasing
+    device_class: energy
+    accuracy_decimals: 3
+    filters:
+      # Multiplication factor from W to kW is 0.001
+      - multiply: 0.001
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
